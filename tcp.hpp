@@ -205,6 +205,28 @@ namespace libsocket {
             sock.raddress = addr;
         }
 
+        void connect(descriptor desc, address_list addr_list) {
+            std::unique_lock lock(socket_table_mutex);
+
+            if (!libsocket::utils::descriptor_ok(desc)) throw std::runtime_error("connect(ipv6): socket closed");
+
+            libsocket::utils::socket& sock = socket_table.at(desc.id);
+
+            for (address& addr : addr_list) {
+                if (addr.family() != sock.family) continue;
+
+                try { utils::connect(sock.fd, addr); } catch(std::runtime_error) { continue; }
+
+                sock.working = true;
+                sock.laddress = libsocket::ipv6::utils::getsockname(desc);
+                sock.raddress = addr;
+
+                break;
+            }
+
+            if (!sock.working) throw std::runtime_error("connect(ipv6): Unable to connect to host: " + std::string(strerror(errno)));
+        }
+
         void bind(descriptor desc, address addr) {
             std::unique_lock lock(socket_table_mutex);
 
@@ -218,6 +240,27 @@ namespace libsocket {
 
             sock.working = true;
             sock.laddress = addr;
+        }
+
+        void bind(descriptor desc, address_list addr_list) {
+            std::unique_lock lock(socket_table_mutex);
+
+            if (!libsocket::utils::descriptor_ok(desc)) throw std::runtime_error("bind(ipv6): socket closed");
+
+            libsocket::utils::socket& sock = socket_table.at(desc.id);
+
+            for (address& addr : addr_list) {
+                if (addr.family() != sock.family) continue;
+
+                try { utils::bind(sock.fd, addr); } catch (std::runtime_error) { continue; }
+
+                sock.working = true;
+                sock.laddress = addr;
+
+                break;
+            }
+
+            if (!sock.working) throw std::runtime_error("bind(ipv6): Unable to bind to host: " + std::string(strerror(errno)));
         }
 
         descriptor accept(descriptor desc) {
