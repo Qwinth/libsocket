@@ -128,6 +128,17 @@ namespace libsocket {
 
             return addr;
         }
+
+        sockaddr_in6 addrInet6() {
+            if (__family != AF_INET6) return {0};
+
+            sockaddr_in6 addr{};
+            memcpy(addr.sin6_addr.__in6_u.__u6_addr8, __addr.ip_v6, sizeof(in6_addr));
+            addr.sin6_port = htons(__port);
+            addr.sin6_family = __family;
+
+            return addr;
+        }
         
         sockaddr_un addrUnix() {
             if (__family != AF_UNIX) return {0};
@@ -170,7 +181,7 @@ namespace libsocket {
         }
 
         operator sockaddr_in6() {
-            return {};
+            return addrInet6();
         }
 
         operator sockaddr_un() {
