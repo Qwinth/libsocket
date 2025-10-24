@@ -15,14 +15,12 @@
 #include "stream.hpp"
 #include "utils.hpp"
 
-#include "../librandom.hpp"
-
 #undef unix
 
 namespace libsocket::unix::stream {
     descriptor open() {
-        int32_t id = random(0, std::numeric_limits<int32_t>::max());
-        uint64_t fingerprint = random(0, std::numeric_limits<int32_t>::max());
+        int32_t id = libsocket::utils::random_s32(libsocket::utils::mersenne);
+        uint64_t fingerprint = libsocket::utils::random_u64(libsocket::utils::mersenne);
 
         libsocket::utils::socket& sock = socket_table.try_emplace(id).first->second;
 
@@ -84,8 +82,8 @@ namespace libsocket::unix::stream {
 
         accepted client = utils::accept(sock.fd);
 
-        int32_t id = random(0, std::numeric_limits<int32_t>::max());
-        uint64_t fingerprint = random(0, std::numeric_limits<int32_t>::max());
+        int32_t id = libsocket::utils::random_s32(libsocket::utils::mersenne);
+        uint64_t fingerprint = libsocket::utils::random_u64(libsocket::utils::mersenne);
 
         libsocket::utils::socket& new_sock = socket_table.try_emplace(id).first->second;
 
