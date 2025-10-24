@@ -8,7 +8,6 @@
 #include <cstdint>
 
 #include <openssl/ssl.h>
-#include <openssl/err.h>
 
 #include "def.hpp"
 #include "socket.hpp"
