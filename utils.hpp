@@ -1,4 +1,5 @@
 #pragma once
+#include <random>
 #include <stdexcept>
 
 #include <sys/socket.h>
@@ -12,6 +13,12 @@
 
 namespace libsocket {
     namespace utils {
+        std::random_device rd; 
+        std::mt19937_64 mersenne(rd());
+
+        std::uniform_int_distribution<std::mt19937_64::result_type> random_s32(0, std::numeric_limits<int32_t>::max());
+        std::uniform_int_distribution<std::mt19937_64::result_type> random_u64(0, std::numeric_limits<uint64_t>::max());
+
         bool descriptor_ok(descriptor desc) {
             bool sock_ok = socket_table.find(desc.id) != socket_table.end();
             bool fingerprint_ok = desc.fingerprint == socket_table.at(desc.id).fingerprint;
