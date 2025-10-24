@@ -142,6 +142,7 @@
 
  - UDP support
  - Unified API for both stream and datagram sockets
+ - Add more error checking
 
  ---
 
