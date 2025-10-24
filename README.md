@@ -12,7 +12,6 @@
  - SSL/TLS support via OpenSSL
  - Unified API with clear namespace structure
  - `any` namespace for generic stream operations
- - Automatic cleanup (including `unlink` for UNIX sockets)
  - Built-in DNS resolver
  - Simple option handling via `setsockopt`
 
