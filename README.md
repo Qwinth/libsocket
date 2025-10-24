@@ -1,6 +1,6 @@
  # libsocket
 
- **libsocket** — a modern C++ socket library supporting TCP, UDP, UNIX sockets, and SSL/TLS.
+ **libsocket** — header-only C++ socket library supporting TCP, UDP, UNIX sockets, and SSL/TLS.
  It is designed for simplicity, clarity, and low-level control without losing elegance.
 
  ---
