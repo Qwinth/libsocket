@@ -14,25 +14,13 @@ namespace libsocket {
     using socklen_t = uint32_t;
     using address_list = std::vector<address>;
 
-    namespace ipv4::tcp {
-        struct accepted {
-            fd_t fd;
-            sockaddr_in addr;
-        };
-    }
+    struct datagram {
+        address addr;
+        std::vector<int8_t> data;
+    };
 
-    namespace ipv6::tcp {
-        struct accepted {
-            fd_t fd;
-            sockaddr_in6 addr;
-        };
-    }
-
-    namespace unix::stream {
-        struct accepted {
-            fd_t fd;
-            sockaddr_un addr;
-        };
-    }
-
+    struct string_datagram {
+        address addr;
+        std::string data;
+    };
 }
