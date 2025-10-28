@@ -21,6 +21,7 @@ namespace libsocket {
 
             int32_t family;
             int32_t type;
+            int32_t sockaddr_size;
 
             address laddress;
             address raddress;
