@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #include "def.hpp"
 #include "socket.hpp"
@@ -61,7 +62,7 @@ namespace libsocket {
         }
     }
 
-    namespace any::stream::ssl {
+    namespace ssl {
         void enable(descriptor desc, ssl_ctx ctx) {
             std::unique_lock lock(socket_table_mutex);
 
@@ -101,7 +102,7 @@ namespace libsocket {
         }
 
         std::string readstring(descriptor desc, int64_t size) {
-            std::vector<int8_t> buffer = read(desc, size);
+            std::vector<int8_t> buffer = libsocket::ssl::read(desc, size);
 
             return std::string(buffer.begin(), buffer.end());
         }
@@ -117,7 +118,7 @@ namespace libsocket {
         }
 
         int64_t writestring(descriptor desc, std::string string) {
-            return write(desc, std::vector<int8_t>(string.begin(), string.end()));
+            return libsocket::ssl::write(desc, std::vector<int8_t>(string.begin(), string.end()));
         }
 
         void shutdown(descriptor desc) {
@@ -128,14 +129,10 @@ namespace libsocket {
             libsocket::utils::socket& sock = socket_table.at(desc.id);
             ssl_conn ssl = ssl_conn_table.at(desc.id);
 
-            SSL_shutdown(ssl);
+            if (!ERR_get_error() || !SSL_get_shutdown(ssl)) SSL_shutdown(ssl);
             SSL_free(ssl);
 
             ssl_conn_table.erase(desc.id);
-
-            ::shutdown(sock.fd, SHUT_RDWR);
-
-            sock.working = false;
         }
     }
 }
