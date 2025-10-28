@@ -27,6 +27,7 @@
  #include "libsocket/tcp.hpp"
  #include "libsocket/udp.hpp"
  #include "libsocket/unix.hpp"
+ #include "libsocket/common.hpp"
  #include "libsocket/ssl.hpp"
  #include "libsocket/dns.hpp"
  #include "libsocket/utils.hpp"
@@ -40,26 +41,48 @@
 
  ```cpp
  #include <iostream>
- #include "libsocket/socket.hpp"
- #include "libsocket/tcp.hpp"
- #include "libsocket/dns.hpp"
- #include "libsocket/utils.hpp"
+ #include "socket.hpp"
+ #include "tcp.hpp"
+ #include "dns.hpp"
 
  int main() {
-     auto socket = libsocket::ipv4::tcp::open();
-     libsocket::utils::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, 1);
-     libsocket::ipv4::tcp::bind(socket, libsocket::ipv4::dns::resolve("localhost", 8000));
-     libsocket::any::stream::listen(socket, 0);
+     libsocket::descriptor sock = libsocket::ipv4::tcp::socket();
+     libsocket::bind(sock, libsocket::ipv4::dns::resolve("localhost", 8000));
+     libsocket::listen(sock, 0);
 
-     auto client = libsocket::ipv4::tcp::accept(socket);
+     while (true) {
+         libsocket::descriptor client = libsocket::accept(sock);
 
-     std::cout << libsocket::any::stream::readstring(client, 1024) << std::endl;
-     libsocket::any::stream::writestring(client, "Hello from server!");
+         std::cout << libsocket::readstring(client, 1024) << std::endl;
+         libsocket::writestring(client, "Hello from TCP server!");
 
-     libsocket::any::stream::shutdown(client);
-     libsocket::any::stream::shutdown(socket);
-     libsocket::ipv4::tcp::close(client);
-     libsocket::ipv4::tcp::close(socket);
+         libsocket::shutdown(client);
+         libsocket::close(client);
+     }
+
+     libsocket::close(sock);
+ }
+ ```
+
+ ---
+
+ ### TCP Client (IPv4)
+
+ ```cpp
+ #include <iostream>
+ #include "socket.hpp"
+ #include "tcp.hpp"
+ #include "dns.hpp"
+ 
+ int main() {
+     libsocket::descriptor sock = libsocket::ipv4::tcp::socket();
+     libsocket::connect(sock, libsocket::ipv4::dns::resolve("localhost", 8000));
+ 
+     libsocket::writestring(sock, "Hi, server!");
+     std::cout << libsocket::readstring(sock, 1024) << std::endl;
+ 
+     libsocket::shutdown(sock);
+     libsocket::close(sock);
  }
  ```
 
@@ -69,23 +92,25 @@
 
  ```cpp
  #include <iostream>
- #include "libsocket/socket.hpp"
- #include "libsocket/unix.hpp"
-
+ #include "socket.hpp"
+ #include "unix.hpp"
+ 
  int main() {
-     auto socket = libsocket::unix::stream::open();
-     libsocket::unix::stream::bind(socket, {"unix.socket"});
-     libsocket::any::stream::listen(socket, 0);
-
-     auto client = libsocket::unix::stream::accept(socket);
-
-     std::cout << libsocket::any::stream::readstring(client, 1024) << std::endl;
-     libsocket::any::stream::writestring(client, "Hello from UNIX server!");
-
-     libsocket::any::stream::shutdown(client);
-     libsocket::any::stream::shutdown(socket);
-     libsocket::unix::stream::close(client);
-     libsocket::unix::stream::close(socket);
+     libsocket::descriptor sock = libsocket::unix::socket();
+     libsocket::unix::unlink("test.socket");
+     libsocket::bind(sock, {"test.socket"});
+     libsocket::listen(sock, 0);
+ 
+     while (true) {
+         libsocket::descriptor cl = libsocket::accept(sock);
+ 
+         std::cout << libsocket::readstring(cl, 1024) << std::endl;
+         libsocket::writestring(cl, "Hello from UNIX server!");
+         
+         libsocket::close(cl);
+     }
+ 
+     libsocket::close(sock);
  }
  ```
 
@@ -95,35 +120,118 @@
 
  ```cpp
  #include <iostream>
- #include "libsocket/socket.hpp"
- #include "libsocket/tcp.hpp"
- #include "libsocket/ssl.hpp"
- #include "libsocket/dns.hpp"
- #include "libsocket/utils.hpp"
-
+ #include "socket.hpp"
+ #include "tcp.hpp"
+ #include "dns.hpp"
+ #include "ssl.hpp"
+ 
  int main() {
      libsocket::utils::ssl::init();
-
-     auto ctx = libsocket::utils::ssl::new_server_context();
+     libsocket::ssl_ctx ctx = libsocket::utils::ssl::new_server_context();
+ 
      libsocket::utils::ssl::load_cert(ctx, "server.crt");
      libsocket::utils::ssl::load_key(ctx, "server.key");
+ 
+     libsocket::descriptor sock = libsocket::ipv4::tcp::socket();
+     libsocket::bind(sock, libsocket::ipv4::dns::resolve("localhost", 8000));
+     libsocket::listen(sock, 0);
+ 
+     while (true) {
+         libsocket::descriptor cl = libsocket::accept(sock);
+ 
+         libsocket::ssl::enable(cl, ctx);
+         libsocket::ssl::handshake(cl);
+ 
+         std::cout << libsocket::ssl::readstring(cl, 1024) << std::endl;
+         libsocket::ssl::writestring(cl, "Hello from SSL server!");
+ 
+         libsocket::ssl::shutdown(cl);
+         libsocket::close(cl);
+     }
+ 
+     libsocket::close(sock);
+ }
+ ```
 
-     auto socket = libsocket::ipv4::tcp::open();
-     libsocket::utils::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, 1);
-     libsocket::ipv4::tcp::bind(socket, libsocket::ipv4::dns::resolve("localhost", 8000));
-     libsocket::any::stream::listen(socket, 0);
+ ---
 
-     auto client = libsocket::ipv4::tcp::accept(socket);
-     libsocket::any::stream::ssl::enable(client, ctx);
-     libsocket::any::stream::ssl::handshake(client);
+ ### SSL/TLS Client
 
-     std::cout << libsocket::any::stream::ssl::readstring(client, 1024) << std::endl;
-     libsocket::any::stream::ssl::writestring(client, "Hello from SSL server!");
+ ```cpp
+ #include <iostream>
+ #include "socket.hpp"
+ #include "tcp.hpp"
+ #include "dns.hpp"
+ #include "ssl.hpp"
+ 
+ int main() {
+     libsocket::utils::ssl::init();
+     libsocket::ssl_ctx ctx = libsocket::utils::ssl::new_client_context();
+ 
+     libsocket::descriptor sock = libsocket::ipv4::tcp::socket();
+     libsocket::connect(sock, libsocket::ipv4::dns::resolve("localhost", 8000));
+ 
+     libsocket::ssl::enable(sock, ctx);
+     libsocket::ssl::handshake(sock);
+ 
+     libsocket::ssl::writestring(sock, "Secure hello!");
+     std::cout << libsocket::ssl::readstring(sock, 1024) << std::endl;
+ 
+     libsocket::ssl::shutdown(sock);
+     libsocket::close(sock);
+ }
+ ```
 
-     libsocket::any::stream::ssl::shutdown(client);
-     libsocket::any::stream::shutdown(socket);
-     libsocket::ipv4::tcp::close(client);
-     libsocket::ipv4::tcp::close(socket);
+---
+
+ ### UDP Server
+
+ ```cpp
+ #include <iostream>
+ #include <algorithm>
+ #include "socket.hpp"
+ #include "udp.hpp"
+ #include "dns.hpp"
+ 
+ int main() {
+     libsocket::descriptor sock = libsocket::ipv4::udp::socket();
+     libsocket::bind(sock, libsocket::ipv4::dns::resolve("localhost", 8000));
+ 
+     while (true) {
+         libsocket::string_datagram temp = libsocket::readstringfrom(sock, 1024);
+ 
+         std::cout << temp.addr.string() << ": " << temp.data << std::endl;
+ 
+         std::transform(temp.data.begin(), temp.data.end(), temp.data.begin(), ::toupper);
+         
+         libsocket::writestringto(sock, temp.data, temp.addr);
+     }
+ 
+     libsocket::close(sock);
+ }
+ ```
+
+ ---
+
+ ### UDP Client
+
+ ```cpp
+ #include <iostream>
+ #include "socket.hpp"
+ #include "udp.hpp"
+ #include "dns.hpp"
+ 
+ int main() {
+     libsocket::descriptor sock = libsocket::ipv4::udp::socket();
+     libsocket::address_list addr = libsocket::ipv4::dns::resolve("localhost", 8000);
+ 
+     libsocket::writestringto(sock, "Yay! UDP is working!", addr.front());
+ 
+     libsocket::string_datagram temp = libsocket::readstringfrom(sock, 1024);
+ 
+     std::cout << temp.addr.string() << ": " << temp.data << std::endl;
+ 
+     libsocket::close(sock);
  }
  ```
 
@@ -132,15 +240,15 @@
  ## DNS Example
 
  ```cpp
- auto addr = libsocket::ipv4::dns::resolve("example.com", 80);
+ auto addr = libsocket::ipv4::dns::resolve("example.com", 443);
  ```
 
  ---
 
  ## Roadmap
 
- - UDP support
- - Unified API for both stream and datagram sockets
+ - UDP support ✅
+ - Unified API for both stream and datagram sockets ✅
  - Add more error checking
 
  ---
